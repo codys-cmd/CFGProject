@@ -187,11 +187,26 @@ char* cfg_getNextToken(char* pBuffer, Token* pToken) {
     //While the next character isn't a terminating symbol.
     while (
         nextSymbol != ';' &&
+
+        //Assignment and '=='
         nextSymbol != '=' &&
+
         nextSymbol != '(' &&
         nextSymbol != ')' &&
         nextSymbol != '{' &&
         nextSymbol != '}' &&
+
+        //Operators
+        nextSymbol != '+' &&
+        nextSymbol != '-' &&
+        nextSymbol != '*' &&
+        nextSymbol != '/' &&
+        nextSymbol != '^' &&
+        nextSymbol != '&' &&
+        nextSymbol != '|' &&
+        nextSymbol != '<' &&
+        nextSymbol != '>' &&
+
         nextSymbol != '\0'
     ) {
         //Ignore next symbol if it is whitespace.
@@ -361,82 +376,37 @@ Value cfg_subValues(Type pTypeA, Type pTypeB, Value pValA, Value pValB, Type* di
     return diff;
 }
 
-Value cfg_parseExpression(char* pBuffer, char** endOfExpr, Type* pType, char pTerminatingSymbol, SymbolTable* pTable) {
-    Value value;
-    Value valA, valB; 
-    Type typeA, typeB;
-    
-    Token* token = (Token*) malloc(sizeof(Token));
-    char* topOfExpr = pBuffer;
-    pBuffer = cfg_getNextToken(pBuffer, token);
-
-    //Expression -> Expression Operator (Value | Symbol)
-    if (token->terminatingSymbol == pTerminatingSymbol) {
-        for (char* ptr = pBuffer; ptr != topOfExpr; ptr--) {
-            char symbol = *ptr;
-            switch (symbol) {
-                case '+':
-                    valA = cfg_parseExpression(topOfExpr, endOfExpr, &typeA, '+', pTable);
-                    valB = cfg_parseExpression(ptr, endOfExpr, &typeB, pTerminatingSymbol, pTable);
-                    value = cfg_addValues(typeA, typeB, valA, valB, pType);
-                    return value;
-
-                case '-':
-
-                    /* Make sure expression is actually a subtraction expression,
-                      and not just a negative number. */
-                    bool isNegativeNum = True;
-                    for (char* ptrB = ptr; ptrB != topOfExpr; ptrB--) {
-                        char symbol = *ptrB;
-                        //If there's another number before the minus sign, it's an expression.
-                        if (symbol > 47 && symbol < 58) {
-                            isNegativeNum = False;
-                            break;
-                        }
-                    }
-                    //If it is just a negative number, skip to value parsing stage.
-                    if (isNegativeNum)
-                        break;
-
-                    valA = cfg_parseExpression(topOfExpr, endOfExpr, &typeA, '-', pTable);
-                    valB = cfg_parseExpression(ptr, endOfExpr, &typeB, pTerminatingSymbol, pTable);
-                    value = cfg_subValues(typeA, typeB, valA, valB, pType);
-                    return value;
-            }
-        }
-
-        /// Expression -> Value | Symbol ///
-        (*endOfExpr) = pBuffer;
-        //Expression -> True | False
+/*
         if (cfg_isTokenKeyword(token->head, True_KW)) {
             (*pType) = Boolean;
             value.boolean = True;
             return value;
+        //Expression -> false
         } else if (cfg_isTokenKeyword(token->head, False_KW)) {
             (*pType) = Boolean;
             value.boolean = False;
             return value;
-        }
-
-        if (cfg_isTokenSymbol(token->head)) { //Expression -> Symbol
-            value = cfg_getSymbolValue(token->head, pTable);
+        //Expression -> Symbol
+        } else if (cfg_isTokenSymbol(token->head)) {
             (*pType) = cfg_getSymbolType(token->head, pTable);
-        } else { //Expression -> Integer | Float
+            value = cfg_getSymbolValue(token->head, pTable);
+            return value;
+        //Expression -> Float | Integer
+        } else {
             value = cfg_parseValue(token->head, pType);
+            return value;
         }
 
-        return value;
-    }
+*/
 
-    //Expression -> ( Expression )
-    if (token->terminatingSymbol  == '(') {
-        value = cfg_parseExpression(pBuffer, endOfExpr, pType, ')', pTable);
-        return value;
-    }
+Value cfg_parseExpression(
+    char* pBuffer, 
+    char** endOfExpr, 
+    Type* pType, 
+    char pTerminatingSymbol, 
+    SymbolTable* pTable) {
+    
 
-    value.integer = 0;
-    (*pType) = Uninitialized;
-    return value;
 }
 
 void cfg_loop(char* pBuffer, SymbolTable* pTable) {
