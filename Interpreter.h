@@ -176,7 +176,7 @@ void cfg_printSymbolTable(SymbolTable* pTable) {
     }
 }
 
-char* cfg_getNextToken(char* pBuffer, Token* pToken) {
+char* cfg_getNextToken(char* pBuffer, Token* pToken, const char* pIgnored, const char* pSymbols) {
 
     char nextSymbol = *pBuffer;
     pToken->head = (Character*) malloc(sizeof(Character));
@@ -184,36 +184,28 @@ char* cfg_getNextToken(char* pBuffer, Token* pToken) {
     Character* head = nextCharacter;
     nextCharacter->link = NULL;
 
-    //While the next character isn't a terminating symbol.
-    while (
-        nextSymbol != ';' &&
+    char* ptrToTerminatingSymbol;
 
-        //Assignment and '=='
-        nextSymbol != '=' &&
+    while (True) {
+        for (ptrToTerminatingSymbol = pSymbols; *ptrToTerminatingSymbol != '\0'; ptrToTerminatingSymbol++) {
+            if (nextSymbol == *ptrToTerminatingSymbol || nextSymbol == '\0')
+                goto outOfLoop;
+        }
 
-        nextSymbol != '(' &&
-        nextSymbol != ')' &&
-        nextSymbol != '{' &&
-        nextSymbol != '}' &&
+        bool ignore = False;
+        for (char* ptr = pIgnored; *ptr != '\0'; ptr++) {
+            if (nextSymbol == *ptr) {
+                ignore = True;
+                break;
+            }
+        }
 
-        //Operators
-        nextSymbol != '+' &&
-        nextSymbol != '-' &&
-        nextSymbol != '*' &&
-        nextSymbol != '/' &&
-        nextSymbol != '^' &&
-        nextSymbol != '&' &&
-        nextSymbol != '|' &&
-        nextSymbol != '<' &&
-        nextSymbol != '>' &&
-
-        nextSymbol != '\0'
-    ) {
-        //Ignore next symbol if it is whitespace.
+        //Whitespace is always ignored.
         if (
             nextSymbol == ' ' ||
             nextSymbol == '\n' ||
-            nextSymbol == '\r'
+            nextSymbol == '\r' ||
+            ignore
         ) {
             pBuffer++;
             nextSymbol = *pBuffer;
@@ -228,6 +220,8 @@ char* cfg_getNextToken(char* pBuffer, Token* pToken) {
         pBuffer++;
         nextSymbol = *pBuffer;
     }
+
+    outOfLoop:
 
     free(head->link);
     head->link = NULL;
@@ -376,36 +370,128 @@ Value cfg_subValues(Type pTypeA, Type pTypeB, Value pValA, Value pValB, Type* di
     return diff;
 }
 
-/*
+Value cfg_parseExpression(
+    char* pBuffer, 
+    char* pEndOfExpr, 
+    Type* pType,
+    char pTerminatingSymbol,
+    SymbolTable* pTable) {
+
+    Value value;
+    
+    /* Find highest precedence operator.
+       By highest precedence, I mean mathematically, and 
+       the operator surrounded by the least number of parenthesis.
+       If expression contains nested parenthesis expressions, the
+       most nested expression is evaluated last, but since we will be recursing
+       back up, it will be the first expression evaluated. */
+    bool operatorFound = False;
+    int lowestParenthesisCount = 2147483647; //Maximum value of integer.
+    int currParenthesisCount = 0;
+    char currOperator = '~';
+    char* ptrToOperator;
+    for (ptrToOperator = pBuffer; ptrToOperator != pEndOfExpr; ptrToOperator++) {
+        char symbol = *ptrToOperator;
+        switch (symbol) {
+            case '(':
+                currParenthesisCount++;
+                break;
+            case ')':
+                currParenthesisCount--;
+                break;
+            case '+':
+                operatorFound = True;
+                if (currParenthesisCount <= lowestParenthesisCount) {
+                    currOperator = '+';
+                    lowestParenthesisCount = currParenthesisCount;
+                }
+                break;
+            case '-':
+                operatorFound = True;
+                if (currParenthesisCount <= lowestParenthesisCount) {
+                    currOperator = '-';
+                    lowestParenthesisCount = currParenthesisCount;
+                }
+                break;
+            case '*':
+                operatorFound = True;
+                if (currParenthesisCount <= lowestParenthesisCount && 
+                /* Since we'll be recursing backward when actually evaluating,
+                   '+' and '-' actually have a higher precedence than '*' and '/'. */
+                    (currOperator != '+' || currOperator != '-')) {
+                    currOperator = '*';
+                    lowestParenthesisCount = currParenthesisCount;
+                }
+                break;
+            case '/':
+                operatorFound = True;
+                if (currParenthesisCount <= lowestParenthesisCount && 
+                    (currOperator != '+' || currOperator != '-')) {
+                    currOperator = '/';
+                    lowestParenthesisCount = currParenthesisCount;
+                }
+                break;
+        }
+    }
+
+    /*Expression -> Value
+      Value -> Symbol | Literal
+      Symbol -> Some token with letters in it.
+      Literal -> Float | Integer | 'false' | 'true'
+    */
+    if (!operatorFound) {
+
+        Token* token = (Token*) malloc(sizeof(Token));
+        char symbols[3] = {')', pTerminatingSymbol, '\0'};
+        cfg_getNextToken(pBuffer, token, "(", symbols);
+
         if (cfg_isTokenKeyword(token->head, True_KW)) {
             (*pType) = Boolean;
             value.boolean = True;
-            return value;
         //Expression -> false
         } else if (cfg_isTokenKeyword(token->head, False_KW)) {
             (*pType) = Boolean;
             value.boolean = False;
-            return value;
         //Expression -> Symbol
         } else if (cfg_isTokenSymbol(token->head)) {
             (*pType) = cfg_getSymbolType(token->head, pTable);
             value = cfg_getSymbolValue(token->head, pTable);
-            return value;
         //Expression -> Float | Integer
         } else {
             value = cfg_parseValue(token->head, pType);
-            return value;
         }
 
-*/
+        cfg_deleteToken(token);
 
-Value cfg_parseExpression(
-    char* pBuffer, 
-    char** endOfExpr, 
-    Type* pType, 
-    char pTerminatingSymbol, 
-    SymbolTable* pTable) {
-    
+    //valA Operator valB
+    /* Expression -> Expression Operator Expression 
+        >> Left Precedence -> valA is Evaulated first. <<
+    */
+    } else {
+
+        Value valA, valB;
+        Type typeA, typeB;
+
+        valA = cfg_parseExpression(pBuffer, ptrToOperator, &typeA, currOperator, pTable);
+        valB = cfg_parseExpression(ptrToOperator, pEndOfExpr, &typeB, pTerminatingSymbol, pTable);
+
+        switch (currOperator) {
+            case '+':
+                value = cfg_addValues(typeA, typeB, valA, valB, pType);
+                break;
+            case '-':
+                value = cfg_subValues(typeA, typeB, valA, valB, pType);
+                break;
+            default:
+                printf("Operator Unimplemented (Yet!)\nReturning number 0.\n");
+                *pType = Integer;
+                value.integer = 0;
+                break;
+        }
+
+    }
+
+    return value;
 
 }
 
@@ -422,18 +508,26 @@ void cfg_loop(char* pBuffer, SymbolTable* pTable) {
     while (True) {
 
         Token* token = (Token*) malloc(sizeof(Token));
-        pBuffer = cfg_getNextToken(pBuffer, token);
+        pBuffer = cfg_getNextToken(pBuffer, token, "", "(=;");
 
         if (cfg_isTokenKeyword(token->head, While_KW)) { 
             //Parse While Block
 
             pointerToConditionalExp = pBuffer;
 
+            int parenthesisCount = 1;
+            char* endOfExpr;
+            for (endOfExpr = pBuffer; parenthesisCount > 0; endOfExpr++) {
+                if (*endOfExpr == '(')
+                    parenthesisCount++;
+                else if (*endOfExpr == ')')
+                    parenthesisCount--;
+            }
+
             Type type;
-            char* endOfExpression = NULL;
-            Value value = cfg_parseExpression(pointerToConditionalExp, &endOfExpression, &type, ')', pTable);
+            Value value = cfg_parseExpression(pointerToConditionalExp, endOfExpr, &type, ')', pTable);
             
-            pBuffer = endOfExpression;
+            pBuffer = endOfExpr;
             if (*pBuffer == ';' || *pBuffer == ')')
                 pBuffer++;
 
@@ -447,11 +541,19 @@ void cfg_loop(char* pBuffer, SymbolTable* pTable) {
             //Parse If Block
             pointerToConditionalExp = pBuffer;
 
+            int parenthesisCount = 1;
+            char* endOfExpr;
+            for (endOfExpr = pBuffer; parenthesisCount > 0; endOfExpr++) {
+                if (*endOfExpr == '(')
+                    parenthesisCount++;
+                else if (*endOfExpr == ')')
+                    parenthesisCount--;
+            }
+
             Type type;
-            char* endOfExpression = NULL;
-            Value value = cfg_parseExpression(pointerToConditionalExp, &endOfExpression, &type, ')', pTable);
+            Value value = cfg_parseExpression(pointerToConditionalExp, endOfExpr, &type, ')', pTable);
            
-            pBuffer = endOfExpression;
+            pBuffer = endOfExpr;
             if (*pBuffer == ';' || *pBuffer == ')')
                 pBuffer++;
             inControlBlock = value.boolean;
@@ -472,12 +574,14 @@ void cfg_loop(char* pBuffer, SymbolTable* pTable) {
                 bool symbolInTable = cfg_isSymbolPresentInTable(token->head, pTable);
                 if (!symbolInTable)
                     cfg_createSymbolTableEntry(token->head, pTable);
+
+                char* endOfExpr;
+                for (endOfExpr = pBuffer;  *endOfExpr != ';'; endOfExpr++);
                 
                 Type type;
-                char* endOfExpression = NULL;
-                Value value = cfg_parseExpression(pBuffer, &endOfExpression, &type, ';', pTable);
+                Value value = cfg_parseExpression(pBuffer, endOfExpr, &type, ';', pTable);
                 
-                pBuffer = endOfExpression;
+                pBuffer = endOfExpr;
                 if (*pBuffer == ';' || *pBuffer == ')')
                     pBuffer++;
 
