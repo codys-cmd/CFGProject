@@ -390,8 +390,16 @@ Value cfg_parseExpression(
     int currParenthesisCount = 0;
     char currOperator = '~';
     char* ptrToOperator;
-    for (ptrToOperator = pBuffer; ptrToOperator != pEndOfExpr; ptrToOperator++) {
-        char symbol = *ptrToOperator;
+
+    //Do not want to mistake an 'Operator Value' for a real expression.
+    if (*pBuffer == '+' ||
+        *pBuffer == '-' ||
+        *pBuffer == '*' ||
+        *pBuffer == '/')
+        pBuffer++;
+    
+    for (char* ptr = pBuffer; ptr != pEndOfExpr; ptr++) {
+        char symbol = *ptr;
         switch (symbol) {
             case '(':
                 currParenthesisCount++;
@@ -404,6 +412,7 @@ Value cfg_parseExpression(
                 if (currParenthesisCount <= lowestParenthesisCount) {
                     currOperator = '+';
                     lowestParenthesisCount = currParenthesisCount;
+                    ptrToOperator = ptr;
                 }
                 break;
             case '-':
@@ -411,6 +420,7 @@ Value cfg_parseExpression(
                 if (currParenthesisCount <= lowestParenthesisCount) {
                     currOperator = '-';
                     lowestParenthesisCount = currParenthesisCount;
+                    ptrToOperator = ptr;
                 }
                 break;
             case '*':
@@ -421,6 +431,7 @@ Value cfg_parseExpression(
                     (currOperator != '+' || currOperator != '-')) {
                     currOperator = '*';
                     lowestParenthesisCount = currParenthesisCount;
+                    ptrToOperator = ptr;
                 }
                 break;
             case '/':
@@ -429,6 +440,7 @@ Value cfg_parseExpression(
                     (currOperator != '+' || currOperator != '-')) {
                     currOperator = '/';
                     lowestParenthesisCount = currParenthesisCount;
+                    ptrToOperator = ptr;
                 }
                 break;
         }
