@@ -1,36 +1,37 @@
-#include <stdlib.h>
+#ifndef TOKEN_H
+#define TOKEN_H
 
 //Boolean definitions.
 typedef int bool;
-const bool False = 0;
-const bool True = 1;
+#define True 1
+#define False 0
 
 //Grammar Keywords --------------
-const char* If_KW = "if";
-const char* While_KW = "while";
-const char* Else_KW = "else";
+extern const char* If_KW;
+extern const char* While_KW;
+extern const char* Else_KW;
 
-const char* True_KW = "true";
-const char* False_KW = "false";
+extern const char* True_KW;
+extern const char* False_KW;
 
-const char* ParenL_KW = "(";
-const char* ParenR_KW = ")";
-const char* SquigL_KW = "{";
-const char* SquigR_KW = "}";
+extern const char* ParenL_KW;
+extern const char* ParenR_KW;
+extern const char* SquigL_KW;
+extern const char* SquigR_KW;
 
-const char* Assign_KW = "=";
-const char* Equals_KW = "==";
-const char* LessTh_KW = "<";
-const char* MoreTh_KW = ">";
-const char* Inc_KW = "++";
-const char* Dec_KW = "--";
-const char* FloatPnt_KW = ".";
+extern const char* Assign_KW;
+extern const char* Equals_KW;
+extern const char* LessTh_KW;
+extern const char* MoreTh_KW;
+extern const char* Inc_KW;
+extern const char* Dec_KW;
+extern const char* FloatPnt_KW;
 
-const char* Power_KW = "^";
-const char* Plus_KW = "+";
-const char* Minus_KW = "-";
-const char* Mult_KW = "*";
-const char* Divide_KW = "/";
+extern const char* Power_KW;
+extern const char* Plus_KW;
+extern const char* Minus_KW;
+extern const char* Mult_KW;
+extern const char* Divide_KW;
 //-------------------------------
 
 typedef struct Character Character;
@@ -40,88 +41,40 @@ struct Character {
     Character* link;
 };
 
+/*
+    Represents a linked list of characters, and the character
+    at the end of it.
+*/
 typedef struct {
-    char terminatingSymbol;
+    char terminatingChar;
     Character* head;
 } Token;
 
-bool cfg_isTokenKeyword(Character* pHead, const char* pKeyword) {
+/*
+    Returns whether or not token matches a keyword.
+    Returns true if it does, false if it doesn't.
+*/
+bool cfg_isTokenKeyword(
+    Character* pHead, //Pointer to head of token.
+    char* pKeyword    //C string representing keyword.
+    );
 
-    while ((*pKeyword) != '\0') {
-        //If Token is Shorter than keyword.
-        if (pHead == NULL) {
-            return False;
-        }
-        //If Token has a charater that doesn't match keyword.
-        if (pHead->data != (*pKeyword)) {
-            return False;
-        }
-        pHead = pHead->link;
-        pKeyword++;
-    }
+/*
+    Returns whether or not token contains a keyword.
+    Returns true if it does, false if it doesn't.
+*/
+bool cfg_tokenContainsKeyword(
+    Character* pHead, //Pointer to head of token.
+    char* pKeyword    //C string representing keyword.
+    );
 
-    //If keyword is shorter than token.
-    return pHead == NULL;
+/*
+    Returns if two tokens match (not counting terminating characters).
+    Returns true if they do, false if they don't.
+*/
+bool cfg_tokensMatch(
+    Character* pHeadA, //Pointer to the head of the first token.
+    Character* pHeadB  //Pointer to the head of the second token.
+    );
 
-}
-
-bool cfg_tokenContainsKeyword(Character* pHead, char* pKW) {
-
-    char* curKWChar = pKW;
-
-    while (pHead != NULL) {
-
-        if (*curKWChar == '\0')
-            return True;
-
-        if (pHead->data == (*curKWChar)) {
-            curKWChar++;
-        } else {
-            curKWChar = pKW;
-        }
-
-        pHead = pHead->link;
-
-    }
-
-    return curKWChar == NULL;
-
-}
-
-bool cfg_isTokenSymbol(Character* pHead) {
-    while (pHead != NULL) {
-        char data = pHead->data;
-        //If the token has a...
-        if (
-            (data >= 65 && data <= 90) || //Uppercase letter, or
-            (data >= 97 && data <= 122) //a Lowercase letter...
-        ) {
-            return True; //It must be a symbol. Symbols must contain at least one letter.
-        }
-        pHead = pHead->link;
-    }
-    return False;
-}
-
-bool cfg_tokensMatch(Character* pHeadA, Character* pHeadB) {
-
-    while (pHeadB != NULL) {
-
-        //If Token is Shorter than the other.
-        if (pHeadA == NULL) {
-            return False;
-        }
-
-        //If Token has a charater that doesn't match the other.
-        if (pHeadA->data != pHeadB->data) {
-            return False;
-        }
-
-        pHeadA = pHeadA->link;
-        pHeadB = pHeadB->link;
-    }
-
-    //If the other token is shorter.
-    return pHeadA == NULL;
-
-}
+#endif
