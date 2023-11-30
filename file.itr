@@ -1,16 +1,1 @@
-a = 0; 
-while (a < 5) {
-    a = a + 1;
-    b = 0;
-    d = 0;
-    while (b < 3) {
-        b = b + 1;
-        c = 0;
-        while (c < 9) {
-            c = c + 1;
-        }
-    }
-    while (d < 20) {
-        d = d + 1;
-    }
-}
+print("\"\"hello :3\"\"");

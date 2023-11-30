@@ -6,6 +6,38 @@
 #include <stdlib.h>
 #include <inttypes.h>
 
+//Grammar Keywords --------------
+
+const char* If_KW = "if";
+const char* While_KW = "while";
+const char* Else_KW = "else";
+
+const char* True_KW = "true";
+const char* False_KW = "false";
+
+const char* ParenL_KW = "(";
+const char* ParenR_KW = ")";
+const char* SquigL_KW = "{";
+const char* SquigR_KW = "}";
+
+const char* Assign_KW = "=";
+const char* Equals_KW = "==";
+const char* LessTh_KW = "<";
+const char* MoreTh_KW = ">";
+const char* Inc_KW = "++";
+const char* Dec_KW = "--";
+const char* FloatPnt_KW = ".";
+
+const char* Power_KW = "^";
+const char* Plus_KW = "+";
+const char* Minus_KW = "-";
+const char* Mult_KW = "*";
+const char* Divide_KW = "/";
+
+const char* Print_KW = "print";
+
+//-------------------------------
+
 /*
     Returns whether or not token can be considered a symbol
     (i.e. if it contains letters).
@@ -173,7 +205,7 @@ void cfg_printSymbolTable(
     char* boolValue;
     double floatValue;
 
-    printf("------ Symbol Table ------\n");
+    printf("\n------ Symbol Table ------\n");
     for (int i = 0; i < pTable->length; i++) {
         printf("Symbol %d. Name: ", i);
         Character* head = pTable->symbolTokens[i];
@@ -320,6 +352,7 @@ char* cfg_getNextToken(
             nextChar == ' ' ||
             nextChar == '\n' ||
             nextChar == '\r' ||
+            nextChar == '\t' ||
             ignore
         ) {
             pBuffer++;
@@ -1152,7 +1185,7 @@ Value cfg_parseExpression(
     (i.e. a token terminates with '}').
 */
 typedef enum {
-    While, If, Else, None
+    While, If, IfElse, Else, None
 } ControlBlockType;
 
 /*
@@ -1183,10 +1216,60 @@ void cfg_loop(
         pBuffer = cfg_getNextToken(pBuffer, token, "{", "(}=;");
 
         /*
+            String -> ' " ' Any characters ' " '
+            Statement -> PrintLn Statement
+            Println Statement -> 'print (' String ');'
+        */
+        if (cfg_isTokenKeyword(token->head, Print_KW)) {
+
+            while (*pBuffer != '\"')
+                pBuffer++;
+            pBuffer++;
+
+            for (; *pBuffer != '\"'; pBuffer++) {
+
+                char nextChar = *pBuffer;
+
+                if (nextChar == '\n' ||
+                    nextChar == '\r' ||
+                    nextChar == '\t')
+                    continue;
+                
+                if (nextChar == '\\') {
+                    nextChar = *(pBuffer+1);
+                    switch (nextChar) {
+                        case '\"':
+                            printf("\"");
+                            pBuffer++;
+                            break;
+                        case 'n':
+                            printf("\n");
+                            pBuffer++;
+                            break;
+                        case 'r':
+                            printf("\r");
+                            pBuffer++;
+                            break;
+                        case 't':
+                            printf("\t");
+                            pBuffer++;
+                            break;
+                    }
+                } else {
+                    printf("%c", nextChar);
+                }
+
+            }
+
+            while (*pBuffer != ';')
+                pBuffer++;
+            pBuffer++;
+
+        /*
             Statement -> While Block
             While Block -> 'while (' Expression ') {' Statement '}'
         */
-        if (cfg_isTokenKeyword(token->head, While_KW)) {
+        } else if (cfg_isTokenKeyword(token->head, While_KW)) {
 
             conditionExprPtrs[whileLoopCount] = pBuffer;
 
@@ -1212,11 +1295,30 @@ void cfg_loop(
             if (type != Boolean)
                 value.boolean = type == Integer ? value.integer > 0 : value.floating_point > 0;
 
-            whileLoopCount++;
+            if (value.boolean) {
 
-            controlBlockStackIndex++;
-            controlBlockStack[controlBlockStackIndex] = While;
+                whileLoopCount++;
 
+                controlBlockStackIndex++;
+                controlBlockStack[controlBlockStackIndex] = While;
+
+            //Skip while loop is conditional is false in the first place.
+            } else {
+
+                while (*pBuffer != '{')
+                    pBuffer++;
+                pBuffer++;
+   
+                int braceCount = 1;
+                for (; braceCount > 0; pBuffer++) {
+                    if (*pBuffer == '{')
+                        braceCount++;
+                    else if (*pBuffer == '}')
+                        braceCount--;
+                }
+
+            }
+            
             cfg_deleteToken(token);
 
         /*
@@ -1240,13 +1342,43 @@ void cfg_loop(
             Value value = cfg_parseExpression(pBuffer, endOfExpr, &type, ')', pTable);
            
             pBuffer = endOfExpr;
+            while (*pBuffer != '{')
+                pBuffer++;
             pBuffer++;
 
             if (type != Boolean)
                 value.boolean = type == Integer ? value.integer > 0 : value.floating_point > 0;
 
-            controlBlockStackIndex++;
-            controlBlockStack[controlBlockStackIndex] = If;
+            //Check and see if there's an else block attached to the if block.
+            int braceCount = 1;
+            char* endIfPtr;
+            for (endIfPtr = pBuffer; braceCount > 0; endIfPtr++) {
+                if (*endIfPtr == '{')
+                    braceCount++;
+                else if (*endIfPtr == '}')
+                    braceCount--;
+            }
+
+            cfg_deleteToken(token);
+            token = (Token*) malloc(sizeof(Token));
+
+            char* elsePtr = cfg_getNextToken(endIfPtr, token, "", "{");
+
+            bool hasElseBlock = cfg_isTokenKeyword(token->head, Else_KW);
+
+            if (value.boolean && hasElseBlock) {
+                controlBlockStackIndex++;
+                controlBlockStack[controlBlockStackIndex] = IfElse;
+            } else if (value.boolean) {
+                controlBlockStackIndex++;
+                controlBlockStack[controlBlockStackIndex] = If;
+            } else if (hasElseBlock) {
+                pBuffer = elsePtr;
+                controlBlockStackIndex++;
+                controlBlockStack[controlBlockStackIndex] = Else;
+            } else {
+                pBuffer = endIfPtr;
+            }
 
             cfg_deleteToken(token);
 
@@ -1289,31 +1421,53 @@ void cfg_loop(
 
                 cfg_deleteToken(token);
 
-                if (controlBlockStack[controlBlockStackIndex] == None) {
-                    continue;
-                } else if (controlBlockStack[controlBlockStackIndex] == While) {
+                switch (controlBlockStack[controlBlockStackIndex]) {
+                    case While:
+                        //Revaluate conditional expression.
+                        Type type;
+                        Value value = cfg_parseExpression(
+                            conditionExprPtrs[whileLoopCount-1], 
+                            endsOfConditionalExp[whileLoopCount-1], 
+                            &type, ')', pTable);
 
-                    //Revaluate conditional expression.
-                    Type type;
-                    Value value = cfg_parseExpression(
-                        conditionExprPtrs[whileLoopCount-1], 
-                        endsOfConditionalExp[whileLoopCount-1], 
-                        &type, ')', pTable);
+                        if (type != Boolean)
+                            value.boolean = type == Integer ? value.integer > 0 : value.floating_point > 0;
 
-                    if (type != Boolean)
-                        value.boolean = type == Integer ? value.integer > 0 : value.floating_point > 0;
+                        if (value.boolean)
+                            pBuffer = ptrsToWhileBody[whileLoopCount-1];
+                        else {
+                            whileLoopCount--;
+                            controlBlockStackIndex--;
+                        }
+                        break;
+                    case IfElse:
+                        token = (Token*) malloc(sizeof(Token));
+                        pBuffer = cfg_getNextToken(pBuffer, token, "", "{");
 
-                    if (value.boolean)
-                        pBuffer = ptrsToWhileBody[whileLoopCount-1];
-                    else {
-                        whileLoopCount--;
+                        int braceCount = 1;
+                        for (; braceCount > 0; pBuffer++) {
+                            if (*pBuffer == '{')
+                                braceCount++;
+                            else if (*pBuffer == '}')
+                                braceCount--;
+                        }
+
+                        cfg_deleteToken(token);
+
                         controlBlockStackIndex--;
-                    }
-                }                    
+                        break;
+                    case If:
+                        controlBlockStackIndex--;
+                        break;
+                    case Else:
+                        controlBlockStackIndex--;
+                        break;
+                    case None:
+                        break;
+                }                  
 
             //Statement -> (None)
             } else if (token->terminatingChar == '\0') {
-                printf("EOF Encountered!\n");
                 cfg_deleteToken(token);
                 break;
             }
