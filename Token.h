@@ -49,4 +49,51 @@ bool cfg_tokensMatch(
     Character* pHeadB  //Pointer to the head of the second token.
     );
 
+/*
+    Returns whether or not token starts with a keyword or not.
+    Returns true if it does, false otherwise.
+*/
+bool cfg_tokenStartsWith(
+    Character* pHead, //Pointer to the head of the token.
+    char* pKeyword    //C string representing keyword.
+    );
+
+/*
+    Returns pointer to character after a certain index.
+*/
+Character* cfg_returnCharsAfterIndex(
+    Character* pHead, //Pointer to the head of the token.
+    int index         //Index to start looking for keyword (0 indexed).
+    );
+
+/*
+    Converts a token to a C string.
+    Returns a heap-allocated c string.
+*/
+char* cfg_tokenToCString(
+    Character* pHead //Pointer to the head of the token.
+    );
+
+/*
+    Given the current pointer to a char buffer representing the current file,
+    assign a token so that it represents all of the characters not ignored, until 
+    a character is encountered that is specified as 'terminating.'
+
+    Returns a pointer to the buffer right after the terminating character.
+*/
+char* cfg_getNextToken(
+    char* pBuffer,     //Pointer to current position in buffer.
+    Token* pToken,     //Pointer to token we want to assign.
+    char* pIgnored,    //C string representing characters to ignore.
+    char* pTerminating //C string representing 'terminating' characters.
+    );
+
+/*
+    Deletes a token (frees it's memory).
+    Handles deleting it's character pointers as well.
+*/
+void cfg_deleteToken(
+    Token* pToken //Pointer to token.
+    );
+
 #endif

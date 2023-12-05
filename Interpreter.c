@@ -1,5 +1,4 @@
 #include "Interpreter.h"
-#include "Token.h"
 
 #include <stdio.h>
 #include <math.h>
@@ -60,35 +59,6 @@ bool cfg_isTokenSymbol(
     }
     return False;
 }
-
-/*
-    Structure which contains values.
-*/
-typedef union {
-    long long integer;
-    bool boolean;
-    double floating_point;
-} Value;
-
-/*
-    Represents the possible types a value or symbol may be.
-*/
-typedef enum {
-    Integer, Boolean, Float, Uninitialized
-} Type;
-
-/*
-    Maps defined symbols to their corresponding types
-    and values via their indicies.
-*/
-typedef struct {
-    
-    int length;
-    Character* symbolTokens [MAX_SYMBOLS];
-    Type types [MAX_SYMBOLS];
-    Value values [MAX_SYMBOLS];
-
-} SymbolTable;
 
 /*
     Creates a new symbol table entry for an uninitialized 
@@ -182,14 +152,7 @@ void cfg_setSymbolValue(
     }
 }
 
-/*
-    Prints information from the symbol table,
-    including symbol names, and their corresponding
-    types and values.
-*/
-void cfg_printSymbolTable(
-    SymbolTable* pTable //Pointer to symbol table.
-    ) {
+void cfg_printSymbolTable(SymbolTable* pTable) {
 
     char* Type_Integer = "Integer";
 
@@ -309,101 +272,6 @@ Value cfg_parseFloatOrInteger(
 
     return value;
 
-}
-
-/*
-    Given the current pointer to a char buffer representing the current file,
-    assign a token so that it represents all of the characters not ignored, until 
-    a character is encountered that is specified as 'terminating.'
-
-    Returns a pointer to the buffer right after the terminating character.
-*/
-char* cfg_getNextToken(
-    char* pBuffer,     //Pointer to current position in buffer.
-    Token* pToken,     //Pointer to token we want to assign.
-    char* pIgnored,    //C string representing characters to ignore.
-    char* pTerminating //C string representing 'terminating' characters.
-    ) {
-
-    char nextChar = *pBuffer;
-    pToken->head = (Character*) malloc(sizeof(Character));
-    Character* nextCharacter = pToken->head;
-    Character* head = nextCharacter;
-    nextCharacter->link = NULL;
-
-    char* ptrToTerminatingChar;
-
-    while (True) {
-        for (ptrToTerminatingChar = pTerminating; *ptrToTerminatingChar != '\0'; ptrToTerminatingChar++) {
-            if (nextChar == *ptrToTerminatingChar || nextChar == '\0')
-                goto outOfLoop;
-        }
-
-        bool ignore = False;
-        for (char* ptr = pIgnored; *ptr != '\0'; ptr++) {
-            if (nextChar == *ptr) {
-                ignore = True;
-                break;
-            }
-        }
-
-        //Whitespace is always ignored.
-        if (
-            nextChar == ' ' ||
-            nextChar == '\n' ||
-            nextChar == '\r' ||
-            nextChar == '\t' ||
-            ignore
-        ) {
-            pBuffer++;
-            nextChar = *pBuffer;
-            continue;
-        }
-
-        nextCharacter->data = nextChar;
-        nextCharacter->link = (Character*) malloc(sizeof(Character));
-        head = nextCharacter;
-        nextCharacter = nextCharacter->link;
-        nextCharacter->link = NULL;
-        pBuffer++;
-        nextChar = *pBuffer;
-    }
-
-    outOfLoop:
-
-    free(head->link);
-    head->link = NULL;
-
-    pToken->terminatingChar = nextChar;
-
-    pBuffer++;
-
-    return pBuffer;
-}
-
-/*
-    Given a pointer to a character, deletes it and all
-    of it's children.
-*/
-void cfg_deleteCharacters(
-    Character* pCharacter //Pointer to character.
-    ) {
-
-    if (pCharacter->link != NULL)
-        cfg_deleteCharacters(pCharacter->link);
-    free(pCharacter);
-}
-
-/*
-    Deletes a token (frees it's memory).
-    Handles deleting it's character pointers as well.
-*/
-void cfg_deleteToken(
-    Token* pToken //Pointer to token.
-    ) {
-
-    cfg_deleteCharacters(pToken->head);
-    free(pToken);
 }
 
 /*
@@ -1188,13 +1056,7 @@ typedef enum {
     While, If, IfElse, Else, None
 } ControlBlockType;
 
-/*
-    Main loop for interpreting a file.
-*/
-void cfg_loop(
-    char* pBuffer, 
-    SymbolTable* pTable
-    ) {
+void cfg_interpretStatements(char* pBuffer, SymbolTable* pTable) {
 
     ControlBlockType controlBlockStack[MAX_CONTROL_BLOCKS];
     int controlBlockStackIndex = 0;
@@ -1475,13 +1337,26 @@ void cfg_loop(
     }
 }
 
-void cfg_start(const char* pFileName) {
+void cfg_interpretFile(const char* pFileName, SymbolTable* pTable) {
 
     //Open file and get length.
     FILE* file = fopen(pFileName, "rb");
-    fseek(file, 0, SEEK_END);
+
+    //Error - File couldn't be opened.
+    if (file == NULL) {
+        printf("File \"%s\" couldn't be opened.\n", pFileName);
+        return;
+    }
+
+    if (fseek(file, 0, SEEK_END)) {
+        printf("Problem reading \"%s\" (Seek End). \n", pFileName);
+        return;
+    }
     int lengthOfFile = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    if (fseek(file, 0, SEEK_SET)) {
+        printf("Problem reading \"%s\" (Seek Set). \n", pFileName);
+        return;
+    }
 
     //Allocate buffer for string rep. of file.
     char* buffer = (char*) malloc(lengthOfFile + 1);
@@ -1489,20 +1364,9 @@ void cfg_start(const char* pFileName) {
     fclose(file);
     buffer[lengthOfFile] = '\0';
 
-    //Allocate and initalize Symbol Table.
-    SymbolTable* table = (SymbolTable*) malloc(sizeof(SymbolTable));
-    table->length = 0;
-    table->symbolTokens[0] = NULL;
-
-    //Start main loop.
-    cfg_loop(buffer, table);
+    //Interpret Statements
+    cfg_interpretStatements(buffer, pTable);
 
     //Free buffer
     free(buffer);
-
-    //Print Table
-    cfg_printSymbolTable(table);
-
-    //Free Table
-    free(table);
 }

@@ -67,3 +67,129 @@ bool cfg_tokensMatch(Character* pHeadA, Character* pHeadB) {
     return pHeadA == NULL;
 
 }
+
+bool cfg_tokenStartsWith(Character* pHead, char* pKeyword) {
+    while (True) {
+        if (*pKeyword == '\0')
+            return True;
+
+        if (pHead == NULL)
+            return False;
+        
+        if (pHead->data == *pKeyword)
+            pKeyword++;
+        else
+            return False;
+        
+        pHead = pHead->link;
+    }
+    return False;
+}
+
+Character* cfg_returnCharsAfterIndex(Character* pHead, int index) {
+    while (index > 0) {
+        if (pHead == NULL)
+            return NULL;
+        pHead = pHead->link;
+        index--;
+    }
+    return pHead;
+}
+
+char* cfg_tokenToCString(Character* pHead) {
+    int len = 1;
+    Character* nextChar = pHead;
+    while (nextChar != NULL) {
+        len++;
+        nextChar = nextChar->link;
+    }
+    char* str = (char*) malloc(len * sizeof(char));
+    for (int i = 0; i < len-1; i++) {
+        str[i] = pHead->data;
+        pHead = pHead->link;
+    }
+
+    str[len-1] = '\0';
+    return str;
+}
+
+char* cfg_getNextToken(char* pBuffer, Token* pToken, char* pIgnored, char* pTerminating) {
+
+    char nextChar = *pBuffer;
+    pToken->head = (Character*) malloc(sizeof(Character));
+    Character* nextCharacter = pToken->head;
+    Character* head = nextCharacter;
+    nextCharacter->link = NULL;
+
+    char* ptrToTerminatingChar;
+
+    while (True) {
+        for (ptrToTerminatingChar = pTerminating; *ptrToTerminatingChar != '\0'; ptrToTerminatingChar++) {
+            if (nextChar == *ptrToTerminatingChar)
+                goto outOfLoop;
+        }
+
+        if (nextChar == '\0')
+            goto outOfLoop;
+
+        bool ignore = False;
+        for (char* ptr = pIgnored; *ptr != '\0'; ptr++) {
+            if (nextChar == *ptr) {
+                ignore = True;
+                break;
+            }
+        }
+
+        //Whitespace is always ignored.
+        if (
+            nextChar == ' ' ||
+            nextChar == '\n' ||
+            nextChar == '\r' ||
+            nextChar == '\t' ||
+            ignore
+        ) {
+            pBuffer++;
+            nextChar = *pBuffer;
+            continue;
+        }
+
+        nextCharacter->data = nextChar;
+        nextCharacter->link = (Character*) malloc(sizeof(Character));
+        head = nextCharacter;
+        nextCharacter = nextCharacter->link;
+        nextCharacter->link = NULL;
+        pBuffer++;
+        nextChar = *pBuffer;
+    }
+
+    outOfLoop:
+
+    free(head->link);
+    head->link = NULL;
+
+    pToken->terminatingChar = nextChar;
+
+    pBuffer++;
+
+    return pBuffer;
+}
+
+/*
+    Given a pointer to a character, deletes it and all
+    of it's children.
+*/
+void cfg_deleteCharacters(
+    Character* pCharacter //Pointer to character.
+    ) {
+
+    if (pCharacter->link != NULL)
+        cfg_deleteCharacters(pCharacter->link);
+    free(pCharacter);
+}
+
+
+void cfg_deleteToken(Token* pToken) {
+
+    cfg_deleteCharacters(pToken->head);
+    free(pToken);
+}
