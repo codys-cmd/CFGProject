@@ -4,19 +4,22 @@
 #include "Interpreter.h"
 
 #define INPUT_BUFFER_LENGTH 256
+
+//Thx stack overflow <3 xo xo
 #define TO_STRING(x) Stringify(x)
     #define Stringify(x) #x
+
 char inputBuffer[INPUT_BUFFER_LENGTH];
 
 //REPL Keywords
-char* HELP = "-help";
-char* QUIT = "-q";
-char* SYMBOLS = "-symbols";
-char* RUNFILE = "-runfile";
-char* USE_REPL_TABLE = "s";
-char* PRINT_TABLE = "p";
-char* RUN = "-run";
-char* DEL_SYMBOLS = "-del_symbols";
+const char* HELP_KW = "-help";
+const char* QUIT_KW = "-q";
+const char* SYMBOLS_KW = "-symbols";
+const char* RUNFILE_KW = "-runfile";
+const char* USE_REPL_TABLE_KW = "s";
+const char* PRINT_TABLE_KW = "p";
+const char* RUN_KW = "-run";
+const char* DEL_SYMBOLS_KW = "-del_symbols";
 
 //Repl's symbol table.
 SymbolTable* symbolTable;
@@ -39,12 +42,12 @@ int main() {
         printf("\n");
 
         //"-q" - Quit repl.
-        if (cfg_isTokenKeyword(token->head, QUIT)) {
+        if (cfg_isTokenKeyword(token->head, QUIT_KW)) {
             printf("Quitting Repl!\n");
             isRunning = False;
         
         //"-help" - Prints information about commands you can run.
-        } else if (cfg_isTokenKeyword(token->head, HELP)) {
+        } else if (cfg_isTokenKeyword(token->head, HELP_KW)) {
             printf("Commands:\n");
             printf("\"-q\" - Quits the Repl.\n");
             printf("\"-symbols\" - Prints out the current contents of the repl's symbol table.\n");
@@ -58,11 +61,20 @@ int main() {
             printf("\"-del_symbols\" - Clears the symbol table.");
 
         //"-symbols" - Prints out the symbol table.
-        } else if (cfg_isTokenKeyword(token->head, SYMBOLS)) {
+        } else if (cfg_isTokenKeyword(token->head, SYMBOLS_KW)) {
             cfg_printSymbolTable(symbolTable);
+        
+        //"-del_symbols" - Clears the symbol table.
+        } else if (cfg_isTokenKeyword(token->head, DEL_SYMBOLS_KW)) {
 
+            cfg_deleteSymbolTable(symbolTable);
+
+            symbolTable = (SymbolTable*) malloc(sizeof(SymbolTable));
+            symbolTable->length = 0;
+            symbolTable->symbolTokens[0] = NULL;
+        
         //"-runfile FLAGS +FILE_NAME" - Runs a file.
-        } else if (cfg_tokenStartsWith(token->head, RUNFILE)) {
+        } else if (cfg_tokenStartsWith(token->head, RUNFILE_KW)) {
 
             bool useReplTable = False;
             bool printTable = False;
@@ -73,10 +85,10 @@ int main() {
                 token = (Token*) malloc( sizeof(Token) );
                 ptr = cfg_getNextToken(ptr, token, "", "+");
                 if (!useReplTable) {
-                    useReplTable = cfg_isTokenKeyword(token->head, USE_REPL_TABLE);
+                    useReplTable = cfg_isTokenKeyword(token->head, USE_REPL_TABLE_KW);
                 } 
                 if (!printTable) {
-                    printTable = cfg_isTokenKeyword(token->head, PRINT_TABLE);
+                    printTable = cfg_isTokenKeyword(token->head, PRINT_TABLE_KW);
                 }
             }
 
@@ -96,11 +108,11 @@ int main() {
             if (printTable)
                 cfg_printSymbolTable(table);
             if (!useReplTable)
-                free(table);
+                cfg_deleteSymbolTable(table);
 
             free(fileName);
 
-        } else if (cfg_tokenStartsWith(token->head, RUN)) {
+        } else if (cfg_tokenStartsWith(token->head, RUN_KW)) {
 
             bool printTable = False;
 
@@ -108,7 +120,7 @@ int main() {
             cfg_deleteToken(token);
             token = (Token*) malloc( sizeof(Token) );
             char* ptrToStatements = cfg_getNextToken(ptr, token, "", "+");
-            printTable = cfg_isTokenKeyword(token->head, PRINT_TABLE);
+            printTable = cfg_isTokenKeyword(token->head, PRINT_TABLE_KW);
 
             if (!printTable)
                 ptrToStatements = ptr;

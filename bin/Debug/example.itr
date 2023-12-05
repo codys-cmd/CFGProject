@@ -22,3 +22,8 @@ if (a == 1) {
     b = 3;
     print("A is not 1, B is 3.\n");
 }
+
+while (a < 25000) {
+    print("LOOP!!!!!! 111 !!!\n");
+    a = a + 1;
+}

@@ -54,6 +54,13 @@ void cfg_printSymbolTable(
     );
 
 /*
+    Free symbol table, and character pointers it contains.
+*/
+void cfg_deleteSymbolTable(
+    SymbolTable* pTable //Pointer to symbol table.
+    );
+
+/*
     Interprets a c-style string which represents a series of valid statements.
     Runs until it reaches a null character.
 */

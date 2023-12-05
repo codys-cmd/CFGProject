@@ -2,7 +2,7 @@
 
 #include <stdlib.h>
 
-bool cfg_isTokenKeyword(Character* pHead, char* pKeyword) {
+bool cfg_isTokenKeyword(Character* pHead, const char* pKeyword) {
 
     while ((*pKeyword) != '\0') {
         //If Token is Shorter than keyword.
@@ -22,9 +22,9 @@ bool cfg_isTokenKeyword(Character* pHead, char* pKeyword) {
 
 }
 
-bool cfg_tokenContainsKeyword(Character* pHead, char* pKW) {
+bool cfg_tokenContainsKeyword(Character* pHead, const char* pKW) {
 
-    char* curKWChar = pKW;
+    const char* curKWChar = pKW;
 
     while (pHead != NULL) {
 
@@ -68,7 +68,7 @@ bool cfg_tokensMatch(Character* pHeadA, Character* pHeadB) {
 
 }
 
-bool cfg_tokenStartsWith(Character* pHead, char* pKeyword) {
+bool cfg_tokenStartsWith(Character* pHead, const char* pKeyword) {
     while (True) {
         if (*pKeyword == '\0')
             return True;
@@ -113,7 +113,7 @@ char* cfg_tokenToCString(Character* pHead) {
     return str;
 }
 
-char* cfg_getNextToken(char* pBuffer, Token* pToken, char* pIgnored, char* pTerminating) {
+char* cfg_getNextToken(char* pBuffer, Token* pToken, const char* pIgnored, const char* pTerminating) {
 
     char nextChar = *pBuffer;
     pToken->head = (Character*) malloc(sizeof(Character));
@@ -121,7 +121,7 @@ char* cfg_getNextToken(char* pBuffer, Token* pToken, char* pIgnored, char* pTerm
     Character* head = nextCharacter;
     nextCharacter->link = NULL;
 
-    char* ptrToTerminatingChar;
+    const char* ptrToTerminatingChar;
 
     while (True) {
         for (ptrToTerminatingChar = pTerminating; *ptrToTerminatingChar != '\0'; ptrToTerminatingChar++) {
@@ -133,7 +133,7 @@ char* cfg_getNextToken(char* pBuffer, Token* pToken, char* pIgnored, char* pTerm
             goto outOfLoop;
 
         bool ignore = False;
-        for (char* ptr = pIgnored; *ptr != '\0'; ptr++) {
+        for (const char* ptr = pIgnored; *ptr != '\0'; ptr++) {
             if (nextChar == *ptr) {
                 ignore = True;
                 break;
@@ -174,13 +174,7 @@ char* cfg_getNextToken(char* pBuffer, Token* pToken, char* pIgnored, char* pTerm
     return pBuffer;
 }
 
-/*
-    Given a pointer to a character, deletes it and all
-    of it's children.
-*/
-void cfg_deleteCharacters(
-    Character* pCharacter //Pointer to character.
-    ) {
+void cfg_deleteCharacters(Character* pCharacter) {
 
     if (pCharacter->link != NULL)
         cfg_deleteCharacters(pCharacter->link);

@@ -28,7 +28,7 @@ typedef struct {
 */
 bool cfg_isTokenKeyword(
     Character* pHead, //Pointer to head of token.
-    char* pKeyword    //C string representing keyword.
+    const char* pKeyword    //C string representing keyword.
     );
 
 /*
@@ -37,7 +37,7 @@ bool cfg_isTokenKeyword(
 */
 bool cfg_tokenContainsKeyword(
     Character* pHead, //Pointer to head of token.
-    char* pKeyword    //C string representing keyword.
+    const char* pKeyword    //C string representing keyword.
     );
 
 /*
@@ -55,7 +55,7 @@ bool cfg_tokensMatch(
 */
 bool cfg_tokenStartsWith(
     Character* pHead, //Pointer to the head of the token.
-    char* pKeyword    //C string representing keyword.
+    const char* pKeyword    //C string representing keyword.
     );
 
 /*
@@ -84,8 +84,16 @@ char* cfg_tokenToCString(
 char* cfg_getNextToken(
     char* pBuffer,     //Pointer to current position in buffer.
     Token* pToken,     //Pointer to token we want to assign.
-    char* pIgnored,    //C string representing characters to ignore.
-    char* pTerminating //C string representing 'terminating' characters.
+    const char* pIgnored,    //C string representing characters to ignore.
+    const char* pTerminating //C string representing 'terminating' characters.
+    );
+
+/*
+    Given a pointer to a character, deletes it and all
+    of it's children.
+*/
+void cfg_deleteCharacters(
+    Character* pCharacter //Pointer to character.
     );
 
 /*

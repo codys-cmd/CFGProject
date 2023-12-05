@@ -19,19 +19,7 @@ const char* ParenR_KW = ")";
 const char* SquigL_KW = "{";
 const char* SquigR_KW = "}";
 
-const char* Assign_KW = "=";
-const char* Equals_KW = "==";
-const char* LessTh_KW = "<";
-const char* MoreTh_KW = ">";
-const char* Inc_KW = "++";
-const char* Dec_KW = "--";
 const char* FloatPnt_KW = ".";
-
-const char* Power_KW = "^";
-const char* Plus_KW = "+";
-const char* Minus_KW = "-";
-const char* Mult_KW = "*";
-const char* Divide_KW = "/";
 
 const char* Print_KW = "print";
 
@@ -73,7 +61,6 @@ void cfg_createSymbolTableEntry(
     pTable->types[pTable->length] = Uninitialized;
     pTable->length++;
     pTable->symbolTokens[pTable->length] = NULL;
-    printf("Symbol Created!\n");
 }
 
 /*
@@ -104,8 +91,14 @@ Value cfg_getSymbolValue(
     ) {
 
     for (int i = 0; i < pTable->length; i++) {
-        if (cfg_tokensMatch(pHead, pTable->symbolTokens[i]))
+        if (cfg_tokensMatch(pHead, pTable->symbolTokens[i])) {
+            if (pTable->types[i] == Uninitialized) {
+                Value value;
+                value.integer = 0;
+                return value;
+            }
             return pTable->values[i];
+        }  
     }
 
     Value value;
@@ -201,6 +194,12 @@ void cfg_printSymbolTable(SymbolTable* pTable) {
                 break;
         }
     }
+}
+
+void cfg_deleteSymbolTable(SymbolTable* pTable) {
+    for (int i = 0; pTable->symbolTokens[i] != NULL; i++)
+        cfg_deleteCharacters(pTable->symbolTokens[i]);
+    free(pTable);
 }
 
 /*
@@ -824,12 +823,14 @@ Value cfg_parseExpression(
                 break;
             case '+':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&' &&
                     currOperator != '=' &&
                     currOperator != '<' && currOperator != '>'
-                    ) {
+                    )) {
                     currOperator = '+';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -837,12 +838,14 @@ Value cfg_parseExpression(
                 break;
             case '-':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&' &&
                     currOperator != '=' &&
                     currOperator != '<' && currOperator != '>'
-                    ) {
+                    )) {
                     currOperator = '-';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -850,13 +853,15 @@ Value cfg_parseExpression(
                 break;
             case '*':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&' &&
                     currOperator != '=' &&
-                    currOperator != '<' && currOperator != '>' && 
+                    currOperator != '<' && currOperator != '>' &&
                     currOperator != '+' && currOperator != '-'
-                    ) {
+                    )) {
                     currOperator = '*';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -864,13 +869,15 @@ Value cfg_parseExpression(
                 break;
             case '/':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&' &&
                     currOperator != '=' &&
                     currOperator != '<' && currOperator != '>' &&
                     currOperator != '+' && currOperator != '-'
-                    ) {
+                    )) {
                     currOperator = '/';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -878,14 +885,16 @@ Value cfg_parseExpression(
                 break;
             case '^':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&' &&
                     currOperator != '=' &&
                     currOperator != '<' && currOperator != '>' &&
                     currOperator != '+' && currOperator != '-' &&
                     currOperator != '*' && currOperator != '/'
-                    ) {
+                    )) {
                     currOperator = '^';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -893,11 +902,13 @@ Value cfg_parseExpression(
                 break;
             case '>':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&' &&
                     currOperator != '='
-                    ) {
+                    )) {
                     currOperator = '>';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -905,11 +916,13 @@ Value cfg_parseExpression(
                 break;
             case '<':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&' &&
                     currOperator != '='
-                    ) {
+                    )) {
                     currOperator = '<';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -1130,6 +1143,8 @@ void cfg_interpretStatements(char* pBuffer, SymbolTable* pTable) {
             while (*pBuffer != ';')
                 pBuffer++;
             pBuffer++;
+
+            cfg_deleteToken(token);
 
         /*
             Statement -> While Block
