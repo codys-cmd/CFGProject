@@ -1,6 +1,24 @@
-a = 2; b = 2;
-c = a + b;
+a = 5;
+print("A is 5.\n");
 
-d = 2 * c^2;
+if (x < 10) {
+    y = 20;
+    print("Y is 20.\n");
+} else {
+    y = 30;
+    print("Y is 30.\n");
+}
 
-z = true && false;
+i = 0;
+while (i < 5) {
+    i = i + 1;
+    print("Loop!\n");
+}
+
+if (a == 1) {
+    b = 2;
+    print("A is 1, B is 2.\n");
+} else {
+    b = 3;
+    print("A is not 1, B is 3.\n");
+}

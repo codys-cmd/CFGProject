@@ -917,10 +917,12 @@ Value cfg_parseExpression(
                 break;
             case '=':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount <= lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|' &&
                     currOperator != '&'
-                    ) {
+                    )) {
                     currOperator = '=';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
@@ -929,9 +931,11 @@ Value cfg_parseExpression(
                 break;
             case '&':
                 operatorFound = True;
-                if (currParenthesisCount <= lowestParenthesisCount && 
+                if (currParenthesisCount < lowestParenthesisCount ||
+                    (
+                    currParenthesisCount == lowestParenthesisCount &&
                     currOperator != '|'
-                    ) {
+                    )) {
                     currOperator = '&';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
