@@ -846,6 +846,32 @@ Value cfg_parseExpression(
                     currOperator != '=' &&
                     currOperator != '<' && currOperator != '>'
                     )) {
+
+                    /*Check to make sure it's not just a negative number.
+                      (If there's another operator, it must be a negative number,
+                       with the expression looking something like 
+                       "Value Operator '-' Value.")
+                    */
+                    bool isNeg = False;
+                    char* ptrB = ptr;
+                    do {
+                        ptrB--;
+                        if (*ptrB == '+' || *ptrB == '-' || *ptrB == '*' ||
+                            *ptrB == '/' || *ptrB == '=' || *ptrB == '|' ||
+                            *ptrB == '&' || *ptrB == '>' || *ptrB == '<' ||
+                            *ptrB == '^'
+                            ) {
+                            isNeg = True;
+                            break;
+                        }
+                    } while (ptrB != pBuffer);
+
+                    if (isNeg) {
+                        if (currOperator == '~')
+                            operatorFound = False;
+                        break;
+                    }
+
                     currOperator = '-';
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
