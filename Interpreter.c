@@ -213,11 +213,7 @@ Value cfg_parseFloatOrInteger(
     ) {
 
     Value value;
-    bool isNegative = cfg_tokenContainsKeyword(pHead, "-");
-
-    //If negative, skip the sign.
-    if (isNegative)
-        pHead = pHead->link;
+ 
     if (cfg_tokenContainsKeyword(pHead, FloatPnt_KW)) {
 
         (*pType) = Float;
@@ -244,9 +240,6 @@ Value cfg_parseFloatOrInteger(
 
         value.floating_point = upper + lower;
 
-        if (isNegative)
-            value.floating_point *= -1;
-
     } else {
         (*pType) = Integer;
 
@@ -264,9 +257,6 @@ Value cfg_parseFloatOrInteger(
         }
 
         value.integer = val;
-
-        if (isNegative)
-            value.integer *= -1;
     }
 
     return value;
@@ -790,9 +780,11 @@ Value cfg_parseExpression(
     char currOperator = '~';
     char* ptrToOperator;
 
+    
     /* Do not want to mistake an expression like
        'Operator Value EndOfExpr' for an operator expression,
        and not the value expression it is. */
+    /*
     if (
         *pBuffer == '+' ||
         *pBuffer == '-' ||
@@ -803,15 +795,18 @@ Value cfg_parseExpression(
         *pBuffer == '>' 
         )
         pBuffer++;
+    */
 
     //Accounting for double width operators...
+    /*
     else if (
         *pBuffer == '&' ||
         *pBuffer == '|' ||
         *pBuffer == '='
         )
         pBuffer += 2;
-    
+    */
+    bool isNegative = False;
     for (char* ptr = pBuffer; ptr != pEndOfExpr; ptr++) {
         char symbol = *ptr;
         switch (symbol) {
@@ -852,30 +847,35 @@ Value cfg_parseExpression(
                        with the expression looking something like 
                        "Value Operator '-' Value.")
                     */
-                    bool isNeg = False;
+                   
                     char* ptrB = ptr;
                     do {
                         ptrB--;
                         if (*ptrB == '+' || *ptrB == '-' || *ptrB == '*' ||
                             *ptrB == '/' || *ptrB == '=' || *ptrB == '|' ||
                             *ptrB == '&' || *ptrB == '>' || *ptrB == '<' ||
-                            *ptrB == '^'
+                            *ptrB == '^' || *ptrB == '('
                             ) {
-                            isNeg = True;
-                            break;
+                            goto isNeg;
                         }
-                    } while (ptrB != pBuffer);
-
-                    if (isNeg) {
-                        if (currOperator == '~')
-                            operatorFound = False;
-                        break;
-                    }
+                    } while (
+                            //PtrB doesn't point to a digit, or alpha. character.
+                            (*ptrB < 48 || *ptrB > 58) && 
+                            (*ptrB < 97 || *ptrB > 122) &&
+                            (*ptrB < 65 || *ptrB > 90)
+                    );
 
                     currOperator = '-';
+                    
                     lowestParenthesisCount = currParenthesisCount;
                     ptrToOperator = ptr;
                 }
+                break;
+
+                isNeg:
+                if (currOperator == '~')
+                    operatorFound = False;
+                isNegative = True;
                 break;
             case '*':
                 operatorFound = True;
@@ -991,6 +991,15 @@ Value cfg_parseExpression(
                 ptr++;
                 break;
         }
+
+        /* Do not want to mistake an expression like
+            'Operator Value EndOfExpr' for an operator expression,
+            and not the value expression it is. */
+        if (operatorFound && pBuffer == ptrToOperator) {
+            operatorFound = False;
+            currOperator = '~';
+            lowestParenthesisCount = 2147483647; 
+        }
     }
 
     /*Expression -> Value
@@ -1002,6 +1011,16 @@ Value cfg_parseExpression(
 
         Token* token = (Token*) malloc(sizeof(Token));
         char symbols[3] = {')', pTerminatingChar, '\0'};
+
+        char symbol = *pBuffer;
+        while (symbol == '+' || symbol == '-' || symbol == '*' || symbol == '/' ||
+            symbol == '&' || symbol == '|' || symbol == '=' || symbol == '^' ||
+            symbol == '<' || symbol == '>' || symbol == '(' || symbol == ' ' ||
+            symbol == '\t' || symbol == '\n' || symbol == '\r') {
+                pBuffer++;
+                symbol = *pBuffer;
+            }
+
         cfg_getNextToken(pBuffer, token, "(", symbols);
 
         //Expression -> 'true'
@@ -1023,6 +1042,12 @@ Value cfg_parseExpression(
         //Expression -> Float | Integer
         } else {
             value = cfg_parseFloatOrInteger(token->head, pType);
+            if (isNegative) {
+                if (*pType == Integer)
+                    value.integer = -value.integer;
+                else  
+                    value.floating_point = -value.floating_point;
+            }
         }
 
         cfg_deleteToken(token);

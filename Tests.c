@@ -86,7 +86,37 @@ int main() {
         testsPassed++;
     } 
 
-    printf("%d / 5 Tests Passed. Press enter to close.", testsPassed);
+    printf("Starting Test 6...\n");
+    cfg_interpretStatements(
+        "c = 16 + -2 ^ (-3 + 5 + -1 + 1);",
+        table
+    );
+
+    if (
+        table->length == 6 &&
+        table->types[5] == Integer &&
+        table->values[5].integer == 20
+    ) {
+        printf("Test #6 Passed!\n");
+        testsPassed++;
+    }
+
+    printf("Starting Test 7...\n");
+    cfg_interpretStatements(
+        "c = 2 ^ (-3 ^ (5 - 3));",
+        table
+    );
+
+    if (
+        table->length == 6 &&
+        table->types[5] == Integer &&
+        table->values[5].integer == 512
+    ) {
+        printf("Test #7 Passed!\n");
+        testsPassed++;
+    }
+
+    printf("%d / 7 Tests Passed. Press enter to close.", testsPassed);
     char input;
     scanf("%c", &input);
 
